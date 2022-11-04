@@ -32,6 +32,10 @@ public class FXTable extends VBox {
 		table.getItems().add(result);
 	}
 
+	public TableView<Result> getTable() {
+		return table;
+	}
+
 	public void removeResult() {
 		table.getItems().clear();
 	}

@@ -12,6 +12,8 @@ public class FXToolBar extends HBox {
 
 	private ToolBar toolBar;
 	private Button btnOpen;
+	private Button btnAdd;
+	private Button btnRun;
 	private Button btnSave;
 	private Button btnExit;
 	private ContentDisplay CONTENT_DISPLAY = ContentDisplay.GRAPHIC_ONLY;
@@ -23,12 +25,16 @@ public class FXToolBar extends HBox {
 	private void buildUI() {
 		btnOpen = createButton("Open", "open.png");
 		btnOpen.setContentDisplay(CONTENT_DISPLAY);
+		btnAdd = createButton("Add", "add.png");
+		btnAdd.setContentDisplay(CONTENT_DISPLAY);
+		btnRun = createButton("Run", "run.png");
+		btnRun.setContentDisplay(CONTENT_DISPLAY);
 		btnSave = createButton("Save", "save.png");
 		btnSave.setContentDisplay(CONTENT_DISPLAY);
 		btnExit = createButton("Exit", "exit.png");
 		btnExit.setContentDisplay(CONTENT_DISPLAY);
 
-		toolBar = new ToolBar(btnOpen, btnSave, btnExit);
+		toolBar = new ToolBar(btnOpen, btnAdd, btnRun, btnSave, btnExit);
 		getChildren().add(this.toolBar);
 		HBox.setHgrow(this.toolBar, Priority.ALWAYS);
 	}
@@ -36,10 +42,10 @@ public class FXToolBar extends HBox {
 	public Button createButton(String text, String file) {
 		String path = "";
 		Image image = new Image(file);
-		ImageView iview = new ImageView(image);
-		iview.setFitHeight(32);
-		iview.setFitWidth(32);
-		Button button = new Button(text, iview);
+		ImageView imageView = new ImageView(image);
+		imageView.setFitHeight(32);
+		imageView.setFitWidth(32);
+		Button button = new Button(text, imageView);
 		return button;
 	}
 
@@ -53,5 +59,13 @@ public class FXToolBar extends HBox {
 
 	public Button getBtnExit() {
 		return btnExit;
+	}
+
+	public Button getBtnAdd() {
+		return btnAdd;
+	}
+
+	public Button getBtnRun() {
+		return btnRun;
 	}
 }
