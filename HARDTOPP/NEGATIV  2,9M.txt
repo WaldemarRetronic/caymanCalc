@@ -1,0 +1,7 @@
+﻿	No.	Name	Workpiece length	Batch remaining	Quantity	Produced	Batch size	Processing	Rejects	Raw material	Running cycle	Areas
+X	1	NEG TOPP LANTERNE	1700.0	1 \ 1	5	5	-	-	RKUB 1,5 GUL	RKUB 1,5	Enabled	0
+X	2	NEG BB LANTERNE	1700.0	1 \ 1	5	5	-	-	RKUB 1,5 GUL	RKUB 1,5	Enabled	0
+X	3	NEG SB LANTERNE	4700.0	1 \ 1	5	5	-	-	RKUB 1,5 GUL	RKUB 1,5	Enabled	0
+X	4	NEG LYSKASTER	6200.0	1 \ 1	5	5	-	-	RKUB 2,5 GUL	RKUB 2,5	Enabled	0
+X	5	NEG HORN	1700.0	1 \ 1	5	5	-	-	RKUB 2,5 GUL	RKUB 2,5	Enabled	0
+X	6	NEG SKYVETAK COCKPIT	6200.0	1 \ 1	5	5	-	-	RKUB 6 GUL	RKUB 6	Enabled	0

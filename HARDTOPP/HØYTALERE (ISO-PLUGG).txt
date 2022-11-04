@@ -1,0 +1,9 @@
+﻿	No.	Name	Workpiece length	Batch remaining	Quantity	Produced	Batch size	Processing	Rejects	Raw material	Running cycle	Areas
+X	1	D2 SB UTE -	7100.0	1 \ 1	5	5	-	-	RKUB 1,5 GUL	RKUB 1,5	Enabled	0
+X	2	D4 SB TWEETER -	9100.0	1 \ 1	5	5	-	-	RKUB 1,5 GUL	RKUB 1,5	Enabled	0
+X	3	D6 BB TWEETER -	8100.0	1 \ 1	5	5	-	-	RKUB 1,5 GUL	RKUB 1,5	Enabled	0
+X	4	D8 BB UTE -	11100.0	1 \ 1	5	5	-	-	RKUB 1,5 GUL	RKUB 1,5	Enabled	0
+X	5	D1 SB UTE +	7100.0	1 \ 1	5	5	-	-	RKUB 1,5 RØD	RKUB 1,5	Enabled	0
+X	6	D3 SB TWEETER +	9100.0	1 \ 1	5	5	-	-	RKUB 1,5 RØD	RKUB 1,5	Enabled	0
+X	7	D5 BB TWEETER +	8100.0	1 \ 1	5	5	-	-	RKUB 1,5 RØD	RKUB 1,5	Enabled	0
+X	8	D7 BB UTE +	11100.0	1 \ 1	5	5	-	-	RKUB 1,5 RØD	RKUB 1,5	Enabled	0
