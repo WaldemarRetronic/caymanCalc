@@ -3,15 +3,15 @@ package pl.valdemar.wire;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.scene.Scene;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.ListView;
-import javafx.scene.control.TextInputDialog;
+import javafx.scene.control.*;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -27,7 +27,7 @@ public class App extends Application {
     private BorderPane root;
     private Scene scene;
     private ListView<Path> selectedFiles;
-    private String filename = "";
+    private String filename;
 
     private FXMenu fxMenu;
     private FXToolBar fxToolBar;
@@ -86,34 +86,46 @@ public class App extends Application {
 
         System.out.println("Multi Open File");
         List<File> files = fileChooser.showOpenMultipleDialog(stage);
+        if (files == null) return null;
         return files.stream()
-                .map(file -> file.toPath())
+                .map(File::toPath)
                 .collect(Collectors.toList());
     }
 
     private void handleOpenBtn() {
         fxToolBar.getBtnOpen().setOnAction(event -> {
-            selectedFiles.setItems(FXCollections.observableList(openFileChooser()));
+            List<Path> paths = openFileChooser();
+            if (paths != null) {
+                selectedFiles.setItems(FXCollections.observableList(paths));
+            }
         });
     }
 
     private void handleAddBtn() {
         fxToolBar.getBtnAdd().setOnAction(event -> {
-            selectedFiles.getItems().addAll(FXCollections.observableList(openFileChooser()));
+            List<Path> paths = openFileChooser();
+            if (paths != null) {
+                selectedFiles.getItems().addAll(FXCollections.observableList(paths));
+            }
         });
     }
 
     private void handleRunBtn() {
         fxToolBar.getBtnRun().setOnAction(event -> {
+
             List<CompletableFuture<List<Wire>>> completableFutureList = new ArrayList<>();
             for (Path path : selectedFiles.getItems()) {
                 completableFutureList.add(CompletableFuture.completedFuture(path)
-                        .thenComposeAsync(this::loadWires));
+                        .thenCompose(this::loadWires));
             }
 
+            System.out.println("running thread: " + Thread.currentThread());
+            // sleep(10000);
             // getting values from cfs
-            CompletableFuture.allOf(completableFutureList.toArray(new CompletableFuture[0]))
+            CompletableFuture<Void> voidCompletableFuture = CompletableFuture.allOf(completableFutureList.toArray(new CompletableFuture[0]))
+                    .exceptionally(this::report)
                     .thenRun(() -> processResults(completableFutureList));
+            //System.out.println(voidCompletableFuture.isDone());
         });
     }
 
@@ -121,22 +133,17 @@ public class App extends Application {
     private void handleSaveBtn() {
         fxToolBar.getBtnSave().setOnAction(event -> {
             System.out.println("Clicked save button");
-            TextInputDialog dialog = new TextInputDialog("caymanResult.csv");
-            dialog.setTitle("Saving result");
-            dialog.setHeaderText("Give file name:");
-            dialog.initOwner(stage);
-            dialog.getDialogPane().lookupButton(ButtonType.OK);
-            Platform.runLater(() -> {
-                Optional<String> response = dialog.showAndWait();
-                filename = response.orElseGet(dialog::getDefaultValue);
-                if (filename.isEmpty()) return;
+            Dialog<String> filenameDialog = new FilenameDialog("result");
+            Optional<String> result = filenameDialog.showAndWait();
+            if (result.isPresent()) {
+                System.out.println("Storing result");
                 try {
-                    System.out.println("storing");
-                    storeResult();
-                } catch (IOException e) {
+                    storeResult(result.get());
+                } catch (Exception e) {
+                    e.printStackTrace();
                     throw new RuntimeException(e);
                 }
-            });
+            }
         });
     }
 
@@ -146,7 +153,7 @@ public class App extends Application {
         });
     }
 
-    private void storeResult() throws IOException {
+    private void storeResult(String filename) throws IOException {
         Path path = Paths.get(filename);
         try (BufferedWriter bw = Files.newBufferedWriter(path)) {
             for (Result item : fxTable.getTable().getItems()) {
@@ -162,6 +169,7 @@ public class App extends Application {
     public CompletableFuture<List<Wire>> loadWires(Path path) {
 
         return CompletableFuture.supplyAsync(() -> {
+            System.out.println("running thread -- " + Thread.currentThread());
             List<Wire> wireList = new ArrayList<>();
             try (BufferedReader br = Files.newBufferedReader(path)) {
                 String input;
@@ -170,17 +178,21 @@ public class App extends Application {
                     String[] itemPieces = input.split("\t");
                     Wire wire = new Wire(itemPieces[9], itemPieces[10], Double.parseDouble(itemPieces[3]));
                     wireList.add(wire);
+                    System.out.println("path " + path);
                 }
                 return wireList;
             } catch (IOException ex) {
-                throw new UncheckedIOException(ex);
+                throw new ApplicationException("File: " + path + " is corrupted or doesn't exist");
+            } catch (NumberFormatException ex) {
+                System.out.println(ex.getMessage());
+                throw new ApplicationException("File: " + path + " has wrong data format");
             }
         });
     }
 
     private void processResults(List<CompletableFuture<List<Wire>>> futures) {
         List<Wire> wireList = new ArrayList<>();
-        futures.stream()
+        futures
                 .forEach(future -> future.thenAccept(wireList::addAll));
         System.out.println(wireList);
 
@@ -208,6 +220,58 @@ public class App extends Application {
                             .reduce(0.0, Double::sum);
             Result result = new Result(item.getKey(), totalLength);
             fxTable.addResult(result);
+        }
+    }
+
+    private Void report(Throwable throwable) {
+        System.out.println("ERROR: " + throwable.getMessage());
+        System.out.println(Thread.currentThread().getName());
+//        Alert alert = new Alert(AlertType.CONFIRMATION);
+        System.out.println(Thread.currentThread().getName());
+        Platform.runLater(() -> {
+            System.out.println(Thread.currentThread());
+            Alert errorAlert = new Alert(AlertType.WARNING);
+            errorAlert.setTitle("Error!");
+            errorAlert.setHeaderText("Something went wrong");
+            System.out.println("before text area");
+
+            TextArea textArea = new TextArea(throwable.getMessage());
+            errorAlert.getDialogPane().setContent(textArea);
+            System.out.println("before show and wait");
+            errorAlert.showAndWait();
+        });
+//
+//        alert.setTitle("Please Confirm");
+//        alert.setHeaderText("Please consider Subscribing");
+//        alert.setContentText("Please Subscribe so that you will be notified when I release new videos");
+//        alert.initOwner(stage);
+//        Optional<ButtonType> result = alert.showAndWait();
+//        if (result.isPresent() && result.get() == ButtonType.OK) {
+//            System.out.println("OK Button Clicked");
+//        }
+//
+//        System.out.println("In errorDialog");
+//        Alert errorAlert = new Alert(AlertType.WARNING);
+//        errorAlert.setTitle("Error!");
+//        errorAlert.setHeaderText("Something went wrong");
+//        System.out.println("before text area");
+//
+//        TextArea textArea = new TextArea(throwable.getMessage());
+//        errorAlert.getDialogPane().setContent(textArea);
+//        System.out.println("before show and wait");
+//        errorAlert.showAndWait();
+
+
+       // DialogsUtils.errorDialog(throwable.getMessage());
+        System.out.println("After error dialog");
+        throw new RuntimeException("terminate"); // in case to be handled if the next exceptionally block will call under chain.
+    }
+
+    private void sleep(int ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException ex) {
+            ex.printStackTrace();
         }
     }
 }
