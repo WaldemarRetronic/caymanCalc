@@ -25,12 +25,18 @@ public class FXToolBar extends HBox {
 	private void buildUI() {
 		btnOpen = createButton("Open", "open.png");
 		btnOpen.setContentDisplay(CONTENT_DISPLAY);
+
 		btnAdd = createButton("Add", "add.png");
 		btnAdd.setContentDisplay(CONTENT_DISPLAY);
+
 		btnRun = createButton("Run", "run.png");
 		btnRun.setContentDisplay(CONTENT_DISPLAY);
+		btnRun.setDisable(true);
+
 		btnSave = createButton("Save", "save.png");
 		btnSave.setContentDisplay(CONTENT_DISPLAY);
+		btnSave.setDisable(true);
+
 		btnExit = createButton("Exit", "exit.png");
 		btnExit.setContentDisplay(CONTENT_DISPLAY);
 

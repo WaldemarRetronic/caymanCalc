@@ -28,7 +28,8 @@ public class FilenameDialog extends Dialog<String> {
 		getDialogPane().setContent(pane);
 		getDialogPane().setHeaderText("Give file name:");
 		getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-		getDialogPane().expandableContentProperty().set(new Label("This is the expandable content area"));
+		getDialogPane().expandableContentProperty().set(new Label("File's name shouldn't include extension.\n" +
+				"Extension \".csv\" will be added automatically."));
 		getDialogPane().setExpanded(true);
 
 		Button button = (Button) getDialogPane().lookupButton(ButtonType.OK);

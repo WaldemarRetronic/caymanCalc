@@ -3,6 +3,9 @@ package pl.valdemar.wire;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
@@ -54,6 +57,8 @@ public class App extends Application {
         handleRunBtn();
         handleSaveBtn();
         handleExitBtn();
+        handleAboutItem();
+
         root.setTop(top);
 
         selectedFiles = new ListView<>();
@@ -76,42 +81,44 @@ public class App extends Application {
         launch();
     }
 
-    private List<Path> openFileChooser() {
-        FileChooser.ExtensionFilter ex = new FileChooser.ExtensionFilter("Text Files", "*.txt");
-        javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
-
-        fileChooser.setTitle("Open Cayman Files");
-        fileChooser.setInitialDirectory(new File("/home/waldemar/Projects/Cayman/HARDTOPP"));
-        fileChooser.getExtensionFilters().addAll(ex);
-
-        System.out.println("Multi Open File");
-        List<File> files = fileChooser.showOpenMultipleDialog(stage);
-        if (files == null) return null;
-        return files.stream()
-                .map(File::toPath)
-                .collect(Collectors.toList());
-    }
-
     private void handleOpenBtn() {
-        fxToolBar.getBtnOpen().setOnAction(event -> {
-            List<Path> paths = openFileChooser();
+        EventHandler<ActionEvent> event = actionEvent -> {
+            List<Path> paths = DialogsUtils.openFileChooser(stage);
             if (paths != null) {
                 selectedFiles.setItems(FXCollections.observableList(paths));
+                fxTable.removeResult();
+                fxMenu.getItemSave().setDisable(true);
+                fxToolBar.getBtnSave().setDisable(true);
+
+                fxMenu.getItemRun().setDisable(false);
+                fxToolBar.getBtnRun().setDisable(false);
             }
-        });
+        };
+
+        fxMenu.getItemOpen().setOnAction(event);
+        fxToolBar.getBtnOpen().setOnAction(event);
     }
 
     private void handleAddBtn() {
-        fxToolBar.getBtnAdd().setOnAction(event -> {
-            List<Path> paths = openFileChooser();
+        EventHandler<ActionEvent> event = actionEvent -> {
+            List<Path> paths = DialogsUtils.openFileChooser(stage);
             if (paths != null) {
                 selectedFiles.getItems().addAll(FXCollections.observableList(paths));
+                fxTable.removeResult();
+                fxMenu.getItemSave().setDisable(true);
+                fxToolBar.getBtnSave().setDisable(true);
+
+                fxMenu.getItemRun().setDisable(false);
+                fxToolBar.getBtnRun().setDisable(false);
             }
-        });
+        };
+
+        fxToolBar.getBtnAdd().setOnAction(event);
+        fxMenu.getItemAdd().setOnAction(event);
     }
 
     private void handleRunBtn() {
-        fxToolBar.getBtnRun().setOnAction(event -> {
+        EventHandler<ActionEvent> event = eventAction -> {
 
             List<CompletableFuture<List<Wire>>> completableFutureList = new ArrayList<>();
             for (Path path : selectedFiles.getItems()) {
@@ -120,23 +127,21 @@ public class App extends Application {
             }
 
             System.out.println("running thread: " + Thread.currentThread());
-            // sleep(10000);
-            // getting values from cfs
             CompletableFuture<Void> voidCompletableFuture = CompletableFuture.allOf(completableFutureList.toArray(new CompletableFuture[0]))
                     .exceptionally(this::report)
                     .thenRun(() -> processResults(completableFutureList));
-            //System.out.println(voidCompletableFuture.isDone());
-        });
+        };
+
+        fxToolBar.getBtnRun().setOnAction(event);
+        fxMenu.getItemRun().setOnAction(event);
     }
 
 
     private void handleSaveBtn() {
-        fxToolBar.getBtnSave().setOnAction(event -> {
-            System.out.println("Clicked save button");
+        EventHandler<ActionEvent> event = actionEvent -> {
             Dialog<String> filenameDialog = new FilenameDialog("result");
             Optional<String> result = filenameDialog.showAndWait();
             if (result.isPresent()) {
-                System.out.println("Storing result");
                 try {
                     storeResult(result.get());
                 } catch (Exception e) {
@@ -144,17 +149,35 @@ public class App extends Application {
                     throw new RuntimeException(e);
                 }
             }
-        });
+        };
+
+        fxToolBar.getBtnSave().setOnAction(event);
+        fxMenu.getItemSave().setOnAction(event);
     }
 
     private void handleExitBtn() {
-        fxToolBar.getBtnExit().setOnAction(event -> {
+        EventHandler<ActionEvent> event = actionEvent -> {
             Platform.exit();
+        };
+
+        fxToolBar.getBtnExit().setOnAction(event);
+        fxMenu.getItemExit().setOnAction(event);
+    }
+
+    private void handleAboutItem() {
+        fxMenu.getItemAbout().setOnAction(event -> {
+            DialogsUtils.dialogAboutApplication();
         });
     }
 
     private void storeResult(String filename) throws IOException {
         Path path = Paths.get(filename);
+        if (Files.exists(path)) {
+            Optional<ButtonType> result = DialogsUtils.confirmationDialog("File already exists.\nDo You want to overwrite?");
+            if (!(result.isPresent() && result.get() == ButtonType.OK)) {
+                return;
+            }
+        }
         try (BufferedWriter bw = Files.newBufferedWriter(path)) {
             for (Result item : fxTable.getTable().getItems()) {
                 bw.write(String.format("%s,%s",
@@ -182,10 +205,9 @@ public class App extends Application {
                 }
                 return wireList;
             } catch (IOException ex) {
-                throw new ApplicationException("File: " + path + " is corrupted or doesn't exist");
+                throw new RuntimeException("File: " + path + " is corrupted or doesn't exist");
             } catch (NumberFormatException ex) {
-                System.out.println(ex.getMessage());
-                throw new ApplicationException("File: " + path + " has wrong data format");
+                throw new RuntimeException("File: " + path + " has wrong data format");
             }
         });
     }
@@ -207,9 +229,10 @@ public class App extends Application {
                 .collect(Collectors.groupingBy(byTypeCode,
                         Collectors.mapping(Wire::getLength, Collectors.toList())));
 
-        fxTable.removeResult();
         writeToTable(groupedByTypeCode);
         writeToTable(groupedByColourTypeCode);
+        fxMenu.getItemSave().setDisable(false);
+        fxToolBar.getBtnSave().setDisable(false);
     }
 
     private void writeToTable(Map<String, List<Double>> groupedBy) {
@@ -224,54 +247,9 @@ public class App extends Application {
     }
 
     private Void report(Throwable throwable) {
-        System.out.println("ERROR: " + throwable.getMessage());
-        System.out.println(Thread.currentThread().getName());
-//        Alert alert = new Alert(AlertType.CONFIRMATION);
-        System.out.println(Thread.currentThread().getName());
-        Platform.runLater(() -> {
-            System.out.println(Thread.currentThread());
-            Alert errorAlert = new Alert(AlertType.WARNING);
-            errorAlert.setTitle("Error!");
-            errorAlert.setHeaderText("Something went wrong");
-            System.out.println("before text area");
-
-            TextArea textArea = new TextArea(throwable.getMessage());
-            errorAlert.getDialogPane().setContent(textArea);
-            System.out.println("before show and wait");
-            errorAlert.showAndWait();
-        });
-//
-//        alert.setTitle("Please Confirm");
-//        alert.setHeaderText("Please consider Subscribing");
-//        alert.setContentText("Please Subscribe so that you will be notified when I release new videos");
-//        alert.initOwner(stage);
-//        Optional<ButtonType> result = alert.showAndWait();
-//        if (result.isPresent() && result.get() == ButtonType.OK) {
-//            System.out.println("OK Button Clicked");
-//        }
-//
-//        System.out.println("In errorDialog");
-//        Alert errorAlert = new Alert(AlertType.WARNING);
-//        errorAlert.setTitle("Error!");
-//        errorAlert.setHeaderText("Something went wrong");
-//        System.out.println("before text area");
-//
-//        TextArea textArea = new TextArea(throwable.getMessage());
-//        errorAlert.getDialogPane().setContent(textArea);
-//        System.out.println("before show and wait");
-//        errorAlert.showAndWait();
-
-
-       // DialogsUtils.errorDialog(throwable.getMessage());
-        System.out.println("After error dialog");
+        String[] message = throwable.getMessage().split(" ", 2);
+        Platform.runLater(() -> DialogsUtils.errorDialog(message[1]));
         throw new RuntimeException("terminate"); // in case to be handled if the next exceptionally block will call under chain.
     }
 
-    private void sleep(int ms) {
-        try {
-            Thread.sleep(ms);
-        } catch (InterruptedException ex) {
-            ex.printStackTrace();
-        }
-    }
 }

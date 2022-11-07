@@ -23,9 +23,8 @@ public class FXTable extends VBox {
 		table.getColumns().add(length);
 		table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 		getChildren().add(table);
-		setPadding(new Insets(10));
+		//setPadding(new Insets(10));
 		VBox.setVgrow(table, Priority.ALWAYS);
-
 	}
 
 	public void addResult(Result result) {
