@@ -6,6 +6,7 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import pl.valdemar.wire.model.Result;
 
 public class FXTable extends VBox {
 
@@ -13,7 +14,7 @@ public class FXTable extends VBox {
 	private TableColumn<Result, String> typeCode;
 	private TableColumn<Result, Double> length;
 
-	public FXTable() {
+	private FXTable() {
 		table = new TableView<Result>();
 		typeCode = new TableColumn<Result, String>("Type Code");
 		typeCode.setCellValueFactory(new PropertyValueFactory<Result, String>("typeCode"));
@@ -23,8 +24,13 @@ public class FXTable extends VBox {
 		table.getColumns().add(length);
 		table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 		getChildren().add(table);
-		//setPadding(new Insets(10));
+		setPadding(new Insets(10));
 		VBox.setVgrow(table, Priority.ALWAYS);
+		table.getStyleClass().add("table-header");
+	}
+
+	public static FXTable createFXTable() {
+		return new FXTable();
 	}
 
 	public void addResult(Result result) {

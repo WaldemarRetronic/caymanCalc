@@ -10,16 +10,19 @@ import javafx.scene.layout.Priority;
 
 public class FXToolBar extends HBox {
 
-	private ToolBar toolBar;
 	private Button btnOpen;
 	private Button btnAdd;
 	private Button btnRun;
 	private Button btnSave;
 	private Button btnExit;
-	private ContentDisplay CONTENT_DISPLAY = ContentDisplay.GRAPHIC_ONLY;
+	private final ContentDisplay CONTENT_DISPLAY = ContentDisplay.GRAPHIC_ONLY;
 
-	public FXToolBar() {
+	private FXToolBar() {
 		buildUI();
+	}
+
+	public static FXToolBar createFXToolBar() {
+		return new FXToolBar();
 	}
 
 	private void buildUI() {
@@ -40,19 +43,17 @@ public class FXToolBar extends HBox {
 		btnExit = createButton("Exit", "exit.png");
 		btnExit.setContentDisplay(CONTENT_DISPLAY);
 
-		toolBar = new ToolBar(btnOpen, btnAdd, btnRun, btnSave, btnExit);
-		getChildren().add(this.toolBar);
-		HBox.setHgrow(this.toolBar, Priority.ALWAYS);
+		ToolBar toolBar = new ToolBar(btnOpen, btnAdd, btnRun, btnSave, btnExit);
+		getChildren().add(toolBar);
+		HBox.setHgrow(toolBar, Priority.ALWAYS);
 	}
 
-	public Button createButton(String text, String file) {
-		String path = "";
-		Image image = new Image(file);
+	public Button createButton(String text, String imageFile) {
+		Image image = new Image(imageFile);
 		ImageView imageView = new ImageView(image);
 		imageView.setFitHeight(32);
 		imageView.setFitWidth(32);
-		Button button = new Button(text, imageView);
-		return button;
+		return new Button(text, imageView);
 	}
 
 	public Button getBtnOpen() {

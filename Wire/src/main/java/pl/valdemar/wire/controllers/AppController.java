@@ -1,37 +1,35 @@
-package pl.valdemar.wire;
+package pl.valdemar.wire.controllers;
 
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
-import javafx.geometry.Insets;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
-import javafx.stage.FileChooser;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
-import javafx.stage.StageStyle;
+import pl.valdemar.wire.*;
+import pl.valdemar.wire.dialogs.DialogsUtils;
+import pl.valdemar.wire.model.Result;
+import pl.valdemar.wire.model.Wire;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class App extends Application {
+public class AppController extends Application {
     private Stage stage;
-    private BorderPane root;
-    private Scene scene;
-    private ListView<Path> selectedFiles;
-    private String filename;
 
+    private FXFileList fxFileList;
     private FXMenu fxMenu;
     private FXToolBar fxToolBar;
     private FXTable fxTable;
@@ -40,16 +38,11 @@ public class App extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
-//         FXMLLoader fxmlLoader = new FXMLLoader(App.class.getResource("app-view.fxml"));
-//         scene = new Scene(fxmlLoader.load(), 320, 240);
-//         stage.setTitle("Hello!");
-//         stage.setScene(scene);
-//         stage.show();
+        this.stage = stage;
+        BorderPane root = new BorderPane();
 
-        root = new BorderPane();
-
-        fxMenu = new FXMenu();
-        fxToolBar = new FXToolBar();
+        fxMenu = FXMenu.createFXMenu();
+        fxToolBar = FXToolBar.createFXToolBar();
 
         VBox top = new VBox(fxMenu, fxToolBar);
         handleOpenBtn();
@@ -61,16 +54,16 @@ public class App extends Application {
 
         root.setTop(top);
 
-        selectedFiles = new ListView<>();
-        root.setLeft(selectedFiles);
+        fxFileList = FXFileList.createFXFileList();
+        root.setLeft(fxFileList);
 
-        fxTable = new FXTable();
+        fxTable = FXTable.createFXTable();
         root.setCenter(fxTable);
 
-        fxStatusBar = new FXStatusBar();
+        fxStatusBar = FXStatusBar.createFXStatusBar();
         root.setBottom(fxStatusBar);
 
-        scene = new Scene(root, 800, 500);
+        Scene scene = new Scene(root, 800, 500);
         scene.getStylesheets().add("stylesheet.css");
         stage.setTitle("Cayman Length Calculator");
         stage.setScene(scene);
@@ -81,17 +74,20 @@ public class App extends Application {
         launch();
     }
 
+    //========== private handler methods==========
+
     private void handleOpenBtn() {
         EventHandler<ActionEvent> event = actionEvent -> {
-            List<Path> paths = DialogsUtils.openFileChooser(stage);
+            List<Path> paths = DialogsUtils.fileChooserOpen(stage);
             if (paths != null) {
-                selectedFiles.setItems(FXCollections.observableList(paths));
+                fxFileList.getSelectedFiles().setItems(FXCollections.observableList(paths));
                 fxTable.removeResult();
                 fxMenu.getItemSave().setDisable(true);
                 fxToolBar.getBtnSave().setDisable(true);
 
                 fxMenu.getItemRun().setDisable(false);
                 fxToolBar.getBtnRun().setDisable(false);
+                fxStatusBar.setText("Ready");
             }
         };
 
@@ -101,15 +97,16 @@ public class App extends Application {
 
     private void handleAddBtn() {
         EventHandler<ActionEvent> event = actionEvent -> {
-            List<Path> paths = DialogsUtils.openFileChooser(stage);
+            List<Path> paths = DialogsUtils.fileChooserOpen(stage);
             if (paths != null) {
-                selectedFiles.getItems().addAll(FXCollections.observableList(paths));
+                fxFileList.getSelectedFiles().getItems().addAll(FXCollections.observableList(paths));
                 fxTable.removeResult();
                 fxMenu.getItemSave().setDisable(true);
                 fxToolBar.getBtnSave().setDisable(true);
 
                 fxMenu.getItemRun().setDisable(false);
                 fxToolBar.getBtnRun().setDisable(false);
+                fxStatusBar.setText("Ready");
             }
         };
 
@@ -121,14 +118,15 @@ public class App extends Application {
         EventHandler<ActionEvent> event = eventAction -> {
 
             List<CompletableFuture<List<Wire>>> completableFutureList = new ArrayList<>();
-            for (Path path : selectedFiles.getItems()) {
+            for (Path path : fxFileList.getSelectedFiles().getItems()) {
+                fxTable.removeResult();
                 completableFutureList.add(CompletableFuture.completedFuture(path)
                         .thenCompose(this::loadWires));
             }
 
             System.out.println("running thread: " + Thread.currentThread());
             CompletableFuture<Void> voidCompletableFuture = CompletableFuture.allOf(completableFutureList.toArray(new CompletableFuture[0]))
-                    .exceptionally(this::report)
+                    .exceptionally(this::reportErrors)
                     .thenRun(() -> processResults(completableFutureList));
         };
 
@@ -139,16 +137,16 @@ public class App extends Application {
 
     private void handleSaveBtn() {
         EventHandler<ActionEvent> event = actionEvent -> {
-            Dialog<String> filenameDialog = new FilenameDialog("result");
-            Optional<String> result = filenameDialog.showAndWait();
-            if (result.isPresent()) {
+            Path path = DialogsUtils.fileChooserSave(stage);
+            if (path != null) {
                 try {
-                    storeResult(result.get());
+                    storeResult(path);
                 } catch (Exception e) {
                     e.printStackTrace();
                     throw new RuntimeException(e);
                 }
             }
+            fxStatusBar.setText("Saved");
         };
 
         fxToolBar.getBtnSave().setOnAction(event);
@@ -170,14 +168,10 @@ public class App extends Application {
         });
     }
 
-    private void storeResult(String filename) throws IOException {
-        Path path = Paths.get(filename);
-        if (Files.exists(path)) {
-            Optional<ButtonType> result = DialogsUtils.confirmationDialog("File already exists.\nDo You want to overwrite?");
-            if (!(result.isPresent() && result.get() == ButtonType.OK)) {
-                return;
-            }
-        }
+    //======= private business methods ==========
+
+    private void storeResult(Path path) throws IOException {
+
         try (BufferedWriter bw = Files.newBufferedWriter(path)) {
             for (Result item : fxTable.getTable().getItems()) {
                 bw.write(String.format("%s,%s",
@@ -188,25 +182,24 @@ public class App extends Application {
         }
     }
 
-    //----------------------Completable Future-----------------------------
     public CompletableFuture<List<Wire>> loadWires(Path path) {
 
         return CompletableFuture.supplyAsync(() -> {
             System.out.println("running thread -- " + Thread.currentThread());
             List<Wire> wireList = new ArrayList<>();
+            Wire wire;
             try (BufferedReader br = Files.newBufferedReader(path)) {
                 String input;
-                br.readLine();
+                br.readLine(); // skipping first line
                 while ((input = br.readLine()) != null) {
                     String[] itemPieces = input.split("\t");
-                    Wire wire = new Wire(itemPieces[9], itemPieces[10], Double.parseDouble(itemPieces[3]));
+                    wire = Wire.of(itemPieces[9], itemPieces[10], Double.parseDouble(itemPieces[3]));
                     wireList.add(wire);
-                    System.out.println("path " + path);
                 }
                 return wireList;
             } catch (IOException ex) {
                 throw new RuntimeException("File: " + path + " is corrupted or doesn't exist");
-            } catch (NumberFormatException ex) {
+            } catch (IllegalArgumentException ex) {
                 throw new RuntimeException("File: " + path + " has wrong data format");
             }
         });
@@ -218,21 +211,22 @@ public class App extends Application {
                 .forEach(future -> future.thenAccept(wireList::addAll));
         System.out.println(wireList);
 
-        Function<Wire, String> byColourTypeCode = Wire::getColourTypeCode;
-        Function<Wire, String> byTypeCode = Wire::getTypeCode;
+        Function<Wire, String> byRawMaterial = Wire::getRawMaterial;
+        Function<Wire, String> byProcessing = Wire::getProcessing;
 
-        Map<String, List<Double>> groupedByColourTypeCode = wireList.stream()
-                .collect(Collectors.groupingBy(byColourTypeCode,
+        Map<String, List<Double>> groupedByRawMaterial = wireList.stream()
+                .collect(Collectors.groupingBy(byRawMaterial,
                         Collectors.mapping(Wire::getLength, Collectors.toList())));
 
-        Map<String, List<Double>> groupedByTypeCode = wireList.stream()
-                .collect(Collectors.groupingBy(byTypeCode,
+        Map<String, List<Double>> groupedByProcessing = wireList.stream()
+                .collect(Collectors.groupingBy(byProcessing,
                         Collectors.mapping(Wire::getLength, Collectors.toList())));
 
-        writeToTable(groupedByTypeCode);
-        writeToTable(groupedByColourTypeCode);
+        writeToTable(groupedByProcessing);
+        writeToTable(groupedByRawMaterial);
         fxMenu.getItemSave().setDisable(false);
         fxToolBar.getBtnSave().setDisable(false);
+        Platform.runLater(() -> fxStatusBar.setText("Processed -- Not Saved"));
     }
 
     private void writeToTable(Map<String, List<Double>> groupedBy) {
@@ -241,12 +235,12 @@ public class App extends Application {
                     item.getValue()
                             .stream()
                             .reduce(0.0, Double::sum);
-            Result result = new Result(item.getKey(), totalLength);
+            Result result = Result.of(item.getKey(), totalLength);
             fxTable.addResult(result);
         }
     }
 
-    private Void report(Throwable throwable) {
+    private Void reportErrors(Throwable throwable) {
         String[] message = throwable.getMessage().split(" ", 2);
         Platform.runLater(() -> DialogsUtils.errorDialog(message[1]));
         throw new RuntimeException("terminate"); // in case to be handled if the next exceptionally block will call under chain.
