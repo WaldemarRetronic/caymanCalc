@@ -11,8 +11,6 @@ import java.nio.file.Path;
 
 public class FXFileList extends VBox {
 
-
-    private static final String STYLE = "/simple-styles.css";
     private final ListView<Path> selectedFiles;
     private final StackPane header;
     private final Label label;

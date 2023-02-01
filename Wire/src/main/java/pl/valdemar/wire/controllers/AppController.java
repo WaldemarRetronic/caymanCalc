@@ -124,7 +124,6 @@ public class AppController extends Application {
                         .thenCompose(this::loadWires));
             }
 
-            System.out.println("running thread: " + Thread.currentThread());
             CompletableFuture<Void> voidCompletableFuture = CompletableFuture.allOf(completableFutureList.toArray(new CompletableFuture[0]))
                     .exceptionally(this::reportErrors)
                     .thenRun(() -> processResults(completableFutureList));
@@ -185,7 +184,6 @@ public class AppController extends Application {
     public CompletableFuture<List<Wire>> loadWires(Path path) {
 
         return CompletableFuture.supplyAsync(() -> {
-            System.out.println("running thread -- " + Thread.currentThread());
             List<Wire> wireList = new ArrayList<>();
             Wire wire;
             try (BufferedReader br = Files.newBufferedReader(path)) {
@@ -209,7 +207,6 @@ public class AppController extends Application {
         List<Wire> wireList = new ArrayList<>();
         futures
                 .forEach(future -> future.thenAccept(wireList::addAll));
-        System.out.println(wireList);
 
         Function<Wire, String> byRawMaterial = Wire::getRawMaterial;
         Function<Wire, String> byProcessing = Wire::getProcessing;
